@@ -1,4 +1,3 @@
-
 <p align="center">
   <a href="https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line-installing.html">
     <picture>
@@ -41,6 +40,10 @@
 -   💬 [**Natural Language Chat**](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line-chat.html): Interact with your terminal using natural language to ask questions, debug issues, or explore the codebase.
 -   🧠 [**Contextual Awareness**](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line-chat.html#command-line-chat-context-integration): Integrates context from your local development environment, so answers are tailored to your specific code and setup.
 -   🤖 [**Agentic Execution**](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line-autocomplete.html): Let Amazon Q take action: generate code, edit files, automate Git workflows, resolve merge conflicts, and more — with your permission.
+-   🤖 [**Non-Interactive Mode**](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line-chat.html): Run Amazon Q in scripts and automation workflows with the `--no-interactive` flag.
+-   📝 [**Editor Integration**](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line-chat.html): Compose complex prompts in your preferred editor using the `/editor` command.
+-   🔒 [**Tool Permissions**](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line-chat.html): Manage permissions for tools that Amazon Q can use with the `/tools` command.
+-   📚 [**Conversation Management**](https://docs.aws.amazon.com/amazonq/latest/qdeveloper-ug/command-line-chat.html): Compact and manage long conversations with the `/compact` command.
 
 ## ⚡️ Installation
 
@@ -177,7 +180,6 @@ cargo clippy --locked --workspace --color always -- -D warnings
 ```
 
 
-
 ### 💡 Quick Tip for Onboarding
 
 Use Q CLI to help you onboard Q CLI! 
@@ -203,7 +205,6 @@ This enables Q to answer onboarding questions like:
 - “How do these components interact?”
 
 Great for speeding up your ramp-up and navigating the repo more effectively.
-
 
 
 
@@ -242,7 +243,6 @@ Below is a high level architecture of how the different components of the app an
 their IPC:
 
 ![architecture](docs/assets/architecture.svg)
-
 
 
 
