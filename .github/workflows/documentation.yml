@@ -1,0 +1,90 @@
+name: Documentation Generation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'crates/q_cli/src/cli/**/*.rs'  # CLI code changes
+      - 'crates/chat-cli/src/cli/**/*.rs'  # Chat CLI code changes
+      - 'docs/**'                       # Direct doc changes
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - 'crates/q_cli/src/cli/**/*.rs'
+      - 'crates/chat-cli/src/cli/**/*.rs'
+      - 'docs/**'
+  workflow_dispatch:  # Allow manual triggering for testing
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml jinja2
+          
+      - name: Extract documentation
+        run: |
+          python scripts/extract_docs.py --source . --output docs/generated
+          
+      - name: Upload documentation artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: documentation
+          path: docs/generated/
+          
+      # Deploy to S3 for PR preview
+      - name: Configure AWS credentials for PR
+        if: github.event_name == 'pull_request'
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+          
+      - name: Deploy PR preview
+        if: github.event_name == 'pull_request'
+        id: deploy_preview
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          aws s3 sync docs/generated/ s3://q-cli-docs-1747522981/pr-$PR_NUMBER/ --delete
+          PREVIEW_URL="http://q-cli-docs-1747522981.s3-website-us-west-2.amazonaws.com/pr-$PR_NUMBER/index.html"
+          echo "::set-output name=preview_url::$PREVIEW_URL"
+          
+      - name: Comment on PR with preview link
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `📚 Documentation preview: ${process.env.PREVIEW_URL}`
+            })
+        env:
+          PREVIEW_URL: ${{ steps.deploy_preview.outputs.preview_url }}
+          
+      # Deploy to production for main branch
+      - name: Configure AWS credentials for production
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+          
+      - name: Deploy to production
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          aws s3 sync docs/generated/ s3://q-cli-docs-1747522981/ --delete
+          echo "Documentation deployed to http://q-cli-docs-1747522981.s3-website-us-west-2.amazonaws.com/"
