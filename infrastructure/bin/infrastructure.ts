@@ -9,7 +9,4 @@ new DocumentationWebsiteStack(app, 'QCliDocsWebsiteStack', {
     account: process.env.CDK_DEFAULT_ACCOUNT, 
     region: process.env.CDK_DEFAULT_REGION || 'us-west-2' 
   },
-  description: 'Amazon Q CLI Documentation Website',
 });
-
-app.synth();

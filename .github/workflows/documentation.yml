@@ -1,21 +1,18 @@
-name: Documentation Generation
+name: Documentation
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
     paths:
-      - 'crates/q_cli/src/cli/**/*.rs'  # CLI code changes
-      - 'crates/chat-cli/src/cli/**/*.rs'  # Chat CLI code changes
-      - 'docs/**'                       # Direct doc changes
-      - 'infrastructure/**'             # Infrastructure changes
-  pull_request:
-    types: [opened, synchronize]
-    paths:
-      - 'crates/q_cli/src/cli/**/*.rs'
-      - 'crates/chat-cli/src/cli/**/*.rs'
+      - 'crates/q_cli/**'
       - 'docs/**'
-      - 'infrastructure/**'
-  workflow_dispatch:  # Allow manual triggering for testing
+      - '.github/workflows/documentation.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'crates/q_cli/**'
+      - 'docs/**'
+      - '.github/workflows/documentation.yml'
 
 jobs:
   build-docs:
@@ -24,58 +21,129 @@ jobs:
       - uses: actions/checkout@v3
       
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10'
           
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyyaml jinja2
+          pip install markdown pyyaml
           
-      - name: Extract documentation
+      - name: Generate documentation
         run: |
-          python scripts/extract_docs.py --source . --output docs/generated
+          mkdir -p docs/generated
+          python scripts/extract_docs.py
+          
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          
+      - name: Install mdBook
+        run: |
+          cargo install mdbook
+          
+      - name: Setup mdBook structure
+        run: |
+          mkdir -p docs/src
+          cp -r docs/generated/* docs/src/
+          
+          # Create book.toml
+          cat > docs/book.toml << EOF
+          [book]
+          title = "Amazon Q Developer CLI Documentation"
+          authors = ["AWS"]
+          description = "Documentation for the Amazon Q Developer CLI"
+          src = "src"
+          
+          [output.html]
+          git-repository-url = "https://github.com/aws/amazon-q-developer-cli"
+          git-repository-icon = "fa-github"
+          site-url = "/"
+          EOF
+          
+          # Create SUMMARY.md
+          echo "# Summary" > docs/src/SUMMARY.md
+          echo "" >> docs/src/SUMMARY.md
+          echo "[Introduction](README.md)" >> docs/src/SUMMARY.md
+          echo "" >> docs/src/SUMMARY.md
+          echo "# Commands" >> docs/src/SUMMARY.md
+          
+          # Add all command files to SUMMARY.md
+          find docs/src -name "*.md" -not -path "*/\.*" -not -name "SUMMARY.md" -not -name "README.md" | sort | while read -r file; do
+            filename=$(basename "$file")
+            title=$(head -n 1 "$file" | sed 's/^# //')
+            if [ "$filename" != "index.md" ]; then
+              echo "- [$title]($filename)" >> docs/src/SUMMARY.md
+            fi
+          done
+          
+          # Create README.md if it doesn't exist
+          if [ ! -f "docs/src/README.md" ]; then
+            if [ -f "docs/src/index.md" ]; then
+              cp docs/src/index.md docs/src/README.md
+            else
+              cat > docs/src/README.md << EOF
+          # Amazon Q Developer CLI Documentation
+          
+          Welcome to the Amazon Q Developer CLI documentation. This site contains reference documentation for all Amazon Q CLI commands.
+          
+          ## Available Commands
+          
+          See the sidebar for a complete list of available commands.
+          EOF
+            fi
+          fi
+          
+      - name: Build mdBook
+        run: |
+          cd docs && mdbook build
           
       - name: Upload documentation artifact
         uses: actions/upload-artifact@v3
         with:
           name: documentation
-          path: docs/generated/
+          path: docs/book
           
-      # Deploy to S3 for PR preview
-      - name: Configure AWS credentials for PR
-        if: github.event_name == 'pull_request'
+  deploy-preview:
+    needs: build-docs
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Download documentation artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: documentation
+          path: docs/book
+          
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2
           
-      - name: Deploy PR preview
-        if: github.event_name == 'pull_request'
-        id: deploy_preview
+      - name: Deploy to S3 preview bucket
         run: |
-          PR_NUMBER=${{ github.event.pull_request.number }}
-          aws s3 sync docs/generated/ s3://q-cli-docs-1747522981/pr-$PR_NUMBER/ --delete
-          PREVIEW_URL="http://q-cli-docs-1747522981.s3-website-us-west-2.amazonaws.com/pr-$PR_NUMBER/index.html"
-          echo "::set-output name=preview_url::$PREVIEW_URL"
+          aws s3 sync docs/book s3://q-cli-docs-preview-${{ github.event.pull_request.number }} --delete
           
       - name: Comment on PR with preview link
-        if: github.event_name == 'pull_request'
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const previewUrl = `http://q-cli-docs-preview-${{ github.event.pull_request.number }}.s3-website-us-west-2.amazonaws.com`;
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `📚 Documentation preview: ${process.env.PREVIEW_URL}`
-            })
-        env:
-          PREVIEW_URL: ${{ steps.deploy_preview.outputs.preview_url }}
-          
+              body: `📚 Documentation preview available at: [${previewUrl}](${previewUrl})`
+            });
+            
   deploy-infrastructure:
     needs: build-docs
     runs-on: ubuntu-latest
@@ -87,7 +155,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: documentation
-          path: docs/generated
+          path: docs/book
           
       - name: Set up Node.js
         uses: actions/setup-node@v3

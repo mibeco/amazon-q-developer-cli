@@ -31,7 +31,7 @@ export class DocumentationWebsiteStack extends cdk.Stack {
         }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
       },
-      // For SPA-like navigation
+      // For SPA routing (if needed)
       errorResponses: [
         {
           httpStatus: 404,
@@ -41,9 +41,9 @@ export class DocumentationWebsiteStack extends cdk.Stack {
       ],
     });
 
-    // Deploy the website content
+    // Deploy the website content - UPDATED to use mdBook output
     new s3deploy.BucketDeployment(this, 'DeployDocumentation', {
-      sources: [s3deploy.Source.asset('../docs/generated')], // Path to your generated docs
+      sources: [s3deploy.Source.asset('./docs/book')], // Path to mdBook generated HTML
       destinationBucket: websiteBucket,
       distribution,
       distributionPaths: ['/*'],
