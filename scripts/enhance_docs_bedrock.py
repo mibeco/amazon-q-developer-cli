@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument('--input-dir', required=True, help='Directory containing basic extracted docs')
     parser.add_argument('--code-dir', required=True, help='Root directory of the codebase')
     parser.add_argument('--output-dir', required=True, help='Directory to write enhanced docs')
-    parser.add_argument('--model', default='anthropic.claude-v2', help='Bedrock model to use')
+    parser.add_argument('--model', default='anthropic.claude-3-sonnet-20240229-v1:0', help='Bedrock model to use')
     parser.add_argument('--max-tokens', type=int, default=4000, help='Maximum tokens for model response')
     parser.add_argument('--temperature', type=float, default=0.5, help='Model temperature (0.0-1.0)')
     parser.add_argument('--force', action='store_true', help='Force regeneration of all docs')
