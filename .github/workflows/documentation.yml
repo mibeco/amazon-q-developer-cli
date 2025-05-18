@@ -7,12 +7,14 @@ on:
       - 'crates/q_cli/src/cli/**/*.rs'  # CLI code changes
       - 'crates/chat-cli/src/cli/**/*.rs'  # Chat CLI code changes
       - 'docs/**'                       # Direct doc changes
+      - 'infrastructure/**'             # Infrastructure changes
   pull_request:
     types: [opened, synchronize]
     paths:
       - 'crates/q_cli/src/cli/**/*.rs'
       - 'crates/chat-cli/src/cli/**/*.rs'
       - 'docs/**'
+      - 'infrastructure/**'
   workflow_dispatch:  # Allow manual triggering for testing
 
 jobs:
@@ -74,17 +76,34 @@ jobs:
         env:
           PREVIEW_URL: ${{ steps.deploy_preview.outputs.preview_url }}
           
-      # Deploy to production for main branch
-      - name: Configure AWS credentials for production
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: aws-actions/configure-aws-credentials@v1
+  deploy-infrastructure:
+    needs: build-docs
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Download documentation artifact
+        uses: actions/download-artifact@v3
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-west-2
+          name: documentation
+          path: docs/generated
           
-      - name: Deploy to production
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          
+      - name: Install CDK dependencies
         run: |
-          aws s3 sync docs/generated/ s3://q-cli-docs-1747522981/ --delete
-          echo "Documentation deployed to http://q-cli-docs-1747522981.s3-website-us-west-2.amazonaws.com/"
+          cd infrastructure
+          npm install
+          
+      - name: Deploy CDK stack
+        run: |
+          cd infrastructure
+          npm run cdk deploy -- --require-approval never
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-west-2
