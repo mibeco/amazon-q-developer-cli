@@ -169,10 +169,10 @@ def extract_code_snippets(command_files, command_name, max_snippets=3, max_lines
     
     return "\n\n".join(snippets)
 
-def generate_enhanced_docs(basic_content, command_name, command_details, code_snippets, model="anthropic.claude-v2", max_tokens=4000, temperature=0.5, region="us-west-2"):
+def generate_enhanced_docs(basic_content, command_name, command_details, code_snippets, model="anthropic.claude-3-sonnet-20240229-v1:0", max_tokens=4000, temperature=0.5, region="us-west-2"):
     """Generate enhanced documentation using Amazon Bedrock."""
-    # Prepare a detailed prompt
-    prompt = f"""
+    # Prepare the content for the prompt
+    prompt_content = f"""
     You are an expert technical writer creating documentation for the Amazon Q Developer CLI.
     
     # TASK
@@ -229,26 +229,123 @@ def generate_enhanced_docs(basic_content, command_name, command_details, code_sn
     # Call the Bedrock API
     bedrock_runtime = boto3.client('bedrock-runtime', region_name=region)
     
-    # Format the request for Claude
+    # Format the request using the messages format for Claude 3 models
     request_body = {
-        "prompt": f"\n\nHuman: {prompt}\n\nAssistant:",
-        "max_tokens_to_sample": max_tokens,
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": max_tokens,
         "temperature": temperature,
-        "anthropic_version": "bedrock-2023-05-31"
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": prompt_content
+                    }
+                ]
+            }
+        ]
     }
     
     try:
         response = bedrock_runtime.invoke_model(
             modelId=model,
-            body=json.dumps(request_body)
+            body=json.dumps(request_body),
+            contentType="application/json",
+            accept="application/json"
         )
         
         response_body = json.loads(response['body'].read().decode('utf-8'))
         
-        # Extract the generated text
-        return response_body.get('completion', '')
+        # Extract the generated text from the messages format response
+        if "content" in response_body and len(response_body["content"]) > 0:
+            for content_item in response_body["content"]:
+                if content_item.get("type") == "text":
+                    return content_item.get("text", "")
+        
+        print(f"Unexpected response format: {response_body}")
+        return None
     except Exception as e:
         print(f"Error calling Bedrock: {e}")
+        print(f"Model ID: {model}")
+        print(f"Region: {region}")
+        if hasattr(e, 'response') and 'Error' in e.response:
+            print(f"Error details: {e.response['Error']}")
+        return None
+    
+    3. Parameters and options section with:
+       - Complete list of all parameters and options
+       - Clear descriptions of each
+       - Default values and required/optional status
+       - Data types or allowed values
+    
+    4. At least 3 practical examples showing:
+       - Basic usage
+       - Common use cases
+       - Advanced scenarios with multiple options
+    
+    5. Troubleshooting section covering:
+       - Common errors and their solutions
+       - Tips for resolving issues
+    
+    6. Related commands section
+    
+    # STYLE GUIDELINES
+    - Use a friendly, professional tone appropriate for AWS documentation
+    - Be concise but thorough
+    - Use proper Markdown formatting
+    - Use tables for parameters and options
+    - Use code blocks with syntax highlighting for examples
+    - Focus on the user perspective, not implementation details
+    
+    Format your response in clean, well-structured Markdown.
+    """
+    
+    # Call the Bedrock API
+    bedrock_runtime = boto3.client('bedrock-runtime', region_name=region)
+    
+    # Format the request using the messages format for Claude 3 models
+    request_body = {
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": prompt_content
+                    }
+                ]
+            }
+        ]
+    }
+    
+    try:
+        response = bedrock_runtime.invoke_model(
+            modelId=model,
+            body=json.dumps(request_body),
+            contentType="application/json",
+            accept="application/json"
+        )
+        
+        response_body = json.loads(response['body'].read().decode('utf-8'))
+        
+        # Extract the generated text from the messages format response
+        if "content" in response_body and len(response_body["content"]) > 0:
+            for content_item in response_body["content"]:
+                if content_item.get("type") == "text":
+                    return content_item.get("text", "")
+        
+        print(f"Unexpected response format: {response_body}")
+        return None
+    except Exception as e:
+        print(f"Error calling Bedrock: {e}")
+        print(f"Model ID: {model}")
+        print(f"Region: {region}")
+        if hasattr(e, 'response') and 'Error' in e.response:
+            print(f"Error details: {e.response['Error']}")
         return None
 
 def should_regenerate(input_path, output_path, force=False):
