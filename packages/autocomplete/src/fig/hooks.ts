@@ -61,7 +61,7 @@ export const useFigSubscriptionEffect = (
       if (unsubscribe) unsubscribe();
       isStale = true;
     };
-  }, deps);
+  }, Array.isArray(deps) ? [getSubscription, ...deps] : [getSubscription]);
 };
 
 export const useFigSettings = (
@@ -73,7 +73,7 @@ export const useFigSettings = (
       updateSettings(settings as SettingsMap);
       updateSelectSuggestionKeybindings(settings as SettingsMap);
     });
-  }, []);
+  }, [setSettings]);
 
   useFigSubscriptionEffect(
     () =>
@@ -84,7 +84,7 @@ export const useFigSettings = (
         updateSelectSuggestionKeybindings(settings as SettingsMap);
         return { unsubscribe: false };
       }),
-    [],
+    [setSettings],
   );
 };
 
