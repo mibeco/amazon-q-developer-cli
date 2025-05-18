@@ -117,7 +117,7 @@ export const useFigAutocomplete = (
         }));
         return { unsubscribe: false };
       }),
-    [],
+    [setFigState],
   );
 
   useFigSubscriptionEffect(
@@ -131,7 +131,7 @@ export const useFigAutocomplete = (
         }));
         return { unsubscribe: false };
       }),
-    [],
+    [setFigState],
   );
 };
 
@@ -144,5 +144,6 @@ export const useFigClearCache = () => {
       clearSpecIndex();
       return { unsubscribe: false };
     }),
+    [],
   );
 };
