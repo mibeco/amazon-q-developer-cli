@@ -44,8 +44,7 @@ jobs:
         aws-region: us-west-2
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     - name: Enhance documentation with Bedrock
-      run: python scripts/enhance_docs_bedrock.py --input-dir docs/generated --code-dir
-        . --output-dir docs/enhanced
+      run: python scripts/enhance_docs_bedrock.py --input-dir docs/generated --code-dir . --output-dir docs/enhanced --model anthropic.claude-3-5-sonnet-20240620-v1:0
     - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:
