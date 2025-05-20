@@ -151,7 +151,7 @@ jobs:
       - name: Comment on PR with preview link
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           script: |
             const previewUrl = `http://q-cli-docs-preview-${{ github.event.pull_request.number }}.s3-website-us-west-2.amazonaws.com`;
             github.rest.issues.createComment({
