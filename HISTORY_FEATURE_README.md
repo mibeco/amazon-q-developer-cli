@@ -100,7 +100,7 @@ Messages: 3
 
 ### Step 1: Clone the Fork
 ```bash
-git clone https://github.com/mibeco/amazon-q-developer-cli.git
+git clone https://github.com/mbcohn/amazon-q-developer-cli.git
 cd amazon-q-developer-cli
 git checkout feature/chat-history-browsing
 ```
