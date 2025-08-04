@@ -99,32 +99,36 @@ Messages: 3
 - Amazon Q Developer CLI account
 
 ### Step 1: Clone the Fork
-bash
+```bash
 git clone https://github.com/mibeco/amazon-q-developer-cli.git
 cd amazon-q-developer-cli
 git checkout feature/chat-history-browsing
+```
 
 ### Step 2: Build the Project
-bash
+```bash
 cargo build --release
+```
 
 The binary will be created at `./target/release/chat_cli`
 
 ### Step 3: Handle Existing Q CLI Installation
 
 ⚠️ **Important**: Check if you already have a `q` command installed:
-bash
+```bash
 which q
+```
 
 If this returns a path (like `/Users/username/.local/bin/q`), you have a conflicting installation. Choose one of these approaches:
 
 **Option A: Use full path (recommended for testing)**
-bash
+```bash
 # Test the history feature directly
 ./target/release/chat_cli history --help
+```
 
 **Option B: Create a wrapper script**
-bash
+```bash
 # Create a test script in your project directory
 echo '#!/bin/bash' > qtest
 echo "$(pwd)/target/release/chat_cli \"\$@\"" >> qtest
@@ -132,33 +136,37 @@ chmod +x qtest
 
 # Test it
 ./qtest history --help
+```
 
 **Option C: Use a different alias name**
-bash
+```bash
 # Add to your shell profile (~/.bashrc, ~/.zshrc, etc.)
 alias qdev='/path/to/amazon-q-developer-cli/target/release/chat_cli'
 
 # Or create a symlink with a different name
 sudo ln -s /path/to/amazon-q-developer-cli/target/release/chat_cli /usr/local/bin/qdev
+```
 
 ### Step 4: Verify Installation
-bash
+```bash
 # Replace 'your_command' with your chosen method (./target/release/chat_cli, ./qtest, qdev, etc.)
 your_command --version                    # Should show version 1.13.1 or higher
 your_command history --help               # Should show history subcommands
+```
 
 If the history command isn't available, see the Troubleshooting section below.
 
 ### Step 5: Generate Some History
-bash
+```bash
 # Have a few conversations to create history
 your_command chat
 # Ask some questions, then exit with /quit
 
 # Repeat a few times in different directories to build up history
+```
 
 ### Step 6: Try the History Features
-bash
+```bash
 # List your conversations
 your_command history list
 
@@ -177,6 +185,7 @@ your_command history export <ID> --output conversation.txt --format text
 
 # Restore a conversation to current directory
 your_command history restore <ID>
+```
 
 ## 🐛 Troubleshooting
 
@@ -184,35 +193,35 @@ your_command history restore <ID>
 If you get "unrecognized subcommand 'history'":
 
 1. **Verify you're using the right binary:**
-   bash
-  which your_command
-  # Should point to your built binary, not an existing installation
+   ```bash
+   which your_command
+   # Should point to your built binary, not an existing installation
+   ```
 
 2. **If using an alias, check it's set correctly:**
-   bash
-  alias | grep your_alias_name
+   ```bash
+   alias | grep your_alias_name
+   ```
 
 3. **Try using the full path directly:**
-   bash
-  /full/path/to/amazon-q-developer-cli/target/release/chat_cli history list
+   ```bash
+   /full/path/to/amazon-q-developer-cli/target/release/chat_cli history list
+   ```
 
 ### No Conversations Found
 - Ensure you've had some chat sessions with the built Q CLI
 - Check that conversations completed successfully (not interrupted)
-- Verify database location:
-~/.aws/amazonq/
+- Verify database location: `~/.aws/amazonq/`
 
 ### Export Fails
 - Check file permissions in target directory
-- Use --force
- flag to overwrite existing files
-- Verify conversation ID exists with your_command history list
+- Use `--force` flag to overwrite existing files
+- Verify conversation ID exists with `your_command history list`
 
 ### Import Issues
 - Ensure JSON file was exported from Q CLI (not manually created)
 - Check file integrity and formatting
-- Use
-/load command within a chat session, not from command line
+- Use `/load` command within a chat session, not from command line
 
 ## 🎨 Export Formats
 
