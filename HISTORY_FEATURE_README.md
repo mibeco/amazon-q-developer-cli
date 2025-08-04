@@ -121,13 +121,22 @@ which q
 
 If this returns a path (like `/Users/username/.local/bin/q`), you have a conflicting installation. Choose one of these approaches:
 
-**Option A: Use full path (recommended for testing)**
+**Option A: Create a symlink (recommended)**
+```bash
+# Create a symlink with a different name to avoid conflicts
+sudo ln -s /path/to/amazon-q-developer-cli/target/release/chat_cli /usr/local/bin/qdev
+
+# Test it works
+qdev history --help
+```
+
+**Option B: Use full path (for testing without permanent changes)**
 ```bash
 # Test the history feature directly
 ./target/release/chat_cli history --help
 ```
 
-**Option B: Create a wrapper script**
+**Option C: Create a wrapper script**
 ```bash
 # Create a test script in your project directory
 echo '#!/bin/bash' > qtest
@@ -138,20 +147,22 @@ chmod +x qtest
 ./qtest history --help
 ```
 
-**Option C: Use a different alias name**
+**Option D: Use shell alias**
 ```bash
 # Add to your shell profile (~/.bashrc, ~/.zshrc, etc.)
 alias qdev='/path/to/amazon-q-developer-cli/target/release/chat_cli'
 
-# Or create a symlink with a different name
-sudo ln -s /path/to/amazon-q-developer-cli/target/release/chat_cli /usr/local/bin/qdev
+# Reload your shell profile
+source ~/.zshrc  # or source ~/.bashrc
 ```
 
 ### Step 4: Verify Installation
 ```bash
-# Replace 'your_command' with your chosen method (./target/release/chat_cli, ./qtest, qdev, etc.)
-your_command --version                    # Should show version 1.13.1 or higher
-your_command history --help               # Should show history subcommands
+# If you used the symlink approach (recommended):
+qdev --version                    # Should show version 1.13.1 or higher
+qdev history --help               # Should show history subcommands
+
+# If you used a different approach, replace 'qdev' with your chosen method
 ```
 
 If the history command isn't available, see the Troubleshooting section below.
@@ -159,7 +170,7 @@ If the history command isn't available, see the Troubleshooting section below.
 ### Step 5: Generate Some History
 ```bash
 # Have a few conversations to create history
-your_command chat
+qdev chat
 # Ask some questions, then exit with /quit
 
 # Repeat a few times in different directories to build up history
@@ -168,23 +179,23 @@ your_command chat
 ### Step 6: Try the History Features
 ```bash
 # List your conversations
-your_command history list
+qdev history list
 
 # Search for specific content
-your_command history search "your search term"
+qdev history search "your search term"
 
 # Show a specific conversation (use an ID from the list)
-your_command history show <ID>
+qdev history show <ID>
 
 # Export a conversation
-your_command history export <ID> --output my_conversation.json
+qdev history export <ID> --output my_conversation.json
 
 # Try different export formats
-your_command history export <ID> --output conversation.md --format markdown
-your_command history export <ID> --output conversation.txt --format text
+qdev history export <ID> --output conversation.md --format markdown
+qdev history export <ID> --output conversation.txt --format text
 
 # Restore a conversation to current directory
-your_command history restore <ID>
+qdev history restore <ID>
 ```
 
 ## 🐛 Troubleshooting
