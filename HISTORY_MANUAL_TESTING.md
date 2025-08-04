@@ -1,202 +1,222 @@
-# Manual Testing Guide for Q CLI History Command
+# Manual Testing Guide for Q CLI History Feature
 
 ## Overview
-This guide provides manual testing steps for the `/history` command implementation since automated testing of the full CLI interaction is limited.
+This guide provides comprehensive testing steps for the history feature implementation. For basic usage instructions, see [HISTORY_FEATURE_README.md](./HISTORY_FEATURE_README.md).
 
 ## Prerequisites
-1. Build the project: `cargo build`
-2. Have some existing Q CLI conversations in your database (use `q chat` in different directories)
+1. Follow the setup instructions in HISTORY_FEATURE_README.md
+2. Have the `qdev` command available (or your chosen method)
+3. Have some existing conversations in your database
 
-## Test Cases
+## Comprehensive Test Cases
 
-### 1. Basic List Command
-```bash
-# Test basic listing
-./target/debug/chat_cli history list
+### Edge Cases and Error Handling
 
-# Expected: Shows table with recent conversations or "No conversations found"
-```
-
-### 2. List with Limit
-```bash
-# Test with custom limit
-./target/debug/chat_cli history list --limit 5
-
-# Expected: Shows at most 5 conversations
-```
-
-### 3. List with Path Filter
-```bash
-# Test path filtering
-./target/debug/chat_cli history list --path /home/user
-./target/debug/chat_cli history list --path workspace
-
-# Expected: Only shows conversations from paths containing the filter string
-```
-
-### 4. Show Specific Conversation
-```bash
-# First get a conversation ID from the list command
-./target/debug/chat_cli history list
-
-# Then show a specific conversation (use actual ID from list)
-./target/debug/chat_cli history show f18c31da-422d-43b9-b7b1-bb01fb7c772b
-
-# Test partial ID matching
-./target/debug/chat_cli history show f18c31da
-
-# Expected: Shows full conversation transcript with resume instructions
-```
-
-### 5. Error Cases
+#### Invalid Input Testing
 ```bash
 # Test with non-existent conversation ID
-./target/debug/chat_cli history show nonexistent
+qdev history show nonexistent
+# Expected: "Conversation with ID 'nonexistent' not found"
 
-# Expected: "Conversation with ID 'nonexistent' not found" message
-```
+# Test with empty search query
+qdev history search ""
+# Expected: Should handle gracefully
 
-### 6. Help Text
-```bash
-# Test help for main command
-./target/debug/chat_cli history --help
-
-# Test help for subcommands
-./target/debug/chat_cli history list --help
-./target/debug/chat_cli history show --help
-
-# Expected: Proper help text with descriptions and options
-```
-
-### 7. Edge Cases
-```bash
 # Test with zero limit
-./target/debug/chat_cli history list --limit 0
+qdev history list --limit 0
+# Expected: Should show no results or handle gracefully
 
 # Test with very large limit
-./target/debug/chat_cli history list --limit 1000
+qdev history list --limit 999999
+# Expected: Should not crash, shows available conversations
 
-# Test with empty path filter
-./target/debug/chat_cli history list --path ""
-
-# Expected: Should handle gracefully without crashing
+# Test with special characters in path filter
+qdev history list --path "~/test with spaces"
+qdev history list --path "path/with/unicode/🚀"
+# Expected: Should filter correctly or handle gracefully
 ```
 
-## Visual Verification
-
-### Table Output Format
-The list command should produce a nicely formatted table like:
-```
-Recent Conversations:
-┌─────────────────────┬──────────────────────────────────────┬─────────────────────────────────────┐
-│ Date                │ Directory                            │ Preview                             │
-├─────────────────────┼──────────────────────────────────────┼─────────────────────────────────────┤
-│ 2025-08-03 17:00:00 │ ~/chat-browser                       │ this is a project related to the...│
-└─────────────────────┴──────────────────────────────────────┴─────────────────────────────────────┘
-```
-
-### Show Command Output
-The show command should display:
-1. Conversation ID
-2. Directory path
-3. Message count
-4. Resume instructions
-5. Full conversation transcript
-
-## Performance Testing
-
-### Large Database
-If you have many conversations:
+#### Export Edge Cases
 ```bash
-# Test performance with large result sets
-./target/debug/chat_cli history list --limit 100
+# Test export to invalid path
+qdev history export <valid-id> --output /invalid/path/file.json
+# Expected: Clear error message about path
 
-# Test filtering performance
-./target/debug/chat_cli history list --path /very/common/path
+# Test export with invalid format
+qdev history export <valid-id> --output test.json --format invalid
+# Expected: Error about invalid format
+
+# Test export without write permissions
+sudo touch /tmp/readonly.json && sudo chmod 444 /tmp/readonly.json
+qdev history export <valid-id> --output /tmp/readonly.json
+# Expected: Permission error
 ```
 
-## Integration Testing
+### Performance Testing
 
-### With Existing Q CLI
-1. Create some conversations using the regular Q CLI:
-   ```bash
-   cd /tmp/test1 && q chat
-   # Have a conversation, then exit
-   
-   cd /tmp/test2 && q chat  
-   # Have another conversation, then exit
-   ```
+#### Large Database Testing
+```bash
+# If you have many conversations (50+):
+time qdev history list --limit 100
+# Expected: Should complete in reasonable time (<2 seconds)
 
-2. Test the history command:
-   ```bash
-   q history list
-   # Should show both conversations
-   
-   q history list --path /tmp
-   # Should show both conversations
-   
-   q history show <id-from-list>
-   # Should show full conversation
-   ```
+time qdev history search "common term"
+# Expected: Should complete in reasonable time
 
-3. Test resuming:
-   ```bash
-   # Follow the resume instructions from the show command
-   cd /tmp/test1
-   q chat
-   # Should resume the previous conversation
-   ```
+# Test memory usage with large results
+qdev history list --limit 1000
+# Expected: Should not consume excessive memory
+```
 
-## Regression Testing
+### Integration Testing
 
-### Ensure Existing Functionality Works
-1. Regular chat still works: `q chat`
-2. Other commands still work: `q login`, `q whoami`, etc.
-3. Database integrity maintained (conversations still persist)
+#### Database Integrity
+```bash
+# Verify conversations persist after history operations
+qdev chat  # Have a conversation
+qdev history list  # Should show the new conversation
+qdev chat --resume  # Should resume properly
+```
 
-## Error Scenarios
+#### Cross-Directory Testing
+```bash
+# Test in multiple directories
+mkdir -p /tmp/test1 /tmp/test2
+cd /tmp/test1 && qdev chat  # Have conversation 1
+cd /tmp/test2 && qdev chat  # Have conversation 2
 
-### Database Issues
-1. Test with corrupted database entries (if possible)
-2. Test with permission issues on database file
-3. Test with missing database
+# Test filtering works
+qdev history list --path test1  # Should show only conversation 1
+qdev history list --path test2  # Should show only conversation 2
+qdev history list --path /tmp   # Should show both
+```
 
-### Invalid Input
-1. Test with invalid conversation IDs
-2. Test with negative limits
-3. Test with very long path filters
+#### Export/Import Workflow
+```bash
+# Full export/import cycle
+qdev history export <id> --output test.json
+# In a chat session: /load test.json
+# Expected: Conversation should load properly
 
-## Expected Behavior Summary
+# Test different formats maintain data integrity
+qdev history export <id> --output test.md --format markdown
+# Expected: Should contain all conversation data in readable format
+```
 
-✅ **Should Work:**
-- List conversations with proper formatting
-- Filter by path substring
-- Limit results appropriately
-- Show full conversations by ID or partial ID
-- Handle empty database gracefully
-- Provide helpful error messages
-- Display proper help text
+### Regression Testing
 
-❌ **Should Not:**
-- Crash on any input
-- Show corrupted or malformed data
-- Expose sensitive information
-- Break existing Q CLI functionality
-- Have memory leaks or performance issues
+#### Ensure Existing Functionality
+```bash
+# Verify core Q CLI still works
+qdev chat  # Should start normally
+qdev --help  # Should show all commands including history
+qdev whoami  # Should work if logged in
+
+# Verify history doesn't interfere with normal operations
+qdev chat  # Have a conversation
+# Exit and restart
+qdev chat --resume  # Should resume properly
+```
+
+### Security and Privacy Testing
+
+#### Data Exposure
+```bash
+# Verify no sensitive data in error messages
+qdev history show invalid-id-with-sensitive-info
+# Expected: Generic error, no data exposure
+
+# Check exported files don't contain unexpected data
+qdev history export <id> --output test.json
+grep -i "password\|token\|secret" test.json
+# Expected: No sensitive data found
+```
+
+## Visual Verification Checklist
+
+### Table Formatting
+- [ ] Columns are properly aligned
+- [ ] Unicode table characters display correctly
+- [ ] Long directory paths are truncated appropriately
+- [ ] Dates are in consistent format
+- [ ] Preview text is truncated at reasonable length
+
+### Error Messages
+- [ ] Error messages are helpful and actionable
+- [ ] No stack traces or debug info in user-facing errors
+- [ ] Consistent error message formatting
+
+### Help Text
+- [ ] All commands have proper help text
+- [ ] Examples in help are accurate
+- [ ] Options are clearly documented
+
+## Performance Benchmarks
+
+### Expected Performance
+- `qdev history list`: < 1 second for 100 conversations
+- `qdev history search`: < 2 seconds for 100 conversations
+- `qdev history show`: < 0.5 seconds
+- `qdev history export`: < 3 seconds for large conversations
+
+### Memory Usage
+- Should not consume > 100MB for normal operations
+- Should not have memory leaks during repeated operations
+
+## Stress Testing
+
+#### Rapid Operations
+```bash
+# Test rapid successive calls
+for i in {1..10}; do qdev history list --limit 1; done
+# Expected: Should handle without issues
+
+# Test concurrent access (if applicable)
+qdev history list & qdev history search "test" & wait
+# Expected: Should handle gracefully
+```
+
+## Error Recovery Testing
+
+#### Database Issues
+```bash
+# Test with database locked (simulate)
+# Test with corrupted database entries
+# Test with missing database file
+# Expected: Graceful error handling, no crashes
+```
+
+## Cleanup and Maintenance
+
+#### Test Data Management
+```bash
+# After extensive testing, you may want to clean up
+# Note: Currently no built-in cleanup command
+# Consider backing up ~/.aws/amazonq/ before extensive testing
+```
 
 ## Reporting Issues
 
-If any test fails:
-1. Note the exact command used
-2. Record the error message or unexpected output
-3. Check if the issue is reproducible
-4. Note your environment (OS, Rust version, etc.)
-5. Include relevant logs if available
+When reporting bugs, include:
+1. **Exact command used**
+2. **Full error message or unexpected output**
+3. **Steps to reproduce**
+4. **Environment details** (OS, shell, Q CLI version)
+5. **Database state** (number of conversations, etc.)
 
-## Cleanup
+## Success Criteria
 
-After testing, you may want to:
-```bash
-# Clean up test conversations if needed
-# (Note: There's no built-in cleanup command yet)
-```
+✅ **All tests should:**
+- Complete without crashes
+- Provide appropriate error messages for invalid input
+- Maintain data integrity
+- Perform within acceptable time limits
+- Display properly formatted output
+- Not interfere with existing Q CLI functionality
+
+❌ **Red flags:**
+- Segmentation faults or crashes
+- Data corruption or loss
+- Extremely slow performance (>10 seconds for basic operations)
+- Sensitive data exposure
+- Breaking existing Q CLI commands
